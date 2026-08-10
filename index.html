@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Prémur">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f1214">
+<title>Prémur — configuration de paroi</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --ground: #ecefec;
+    --panel: #ffffff;
+    --panel-2: #f6f8f6;
+    --ink: #14181a;
+    --dim: #5d6763;
+    --line: #d3d9d4;
+    --line-soft: #e4e8e4;
+    --accent: #1d5e79;
+    --accent-soft: #e3eef3;
+    --ok: #1f6b45;
+    --ok-bg: #e4f1e9;
+    --ko: #a32017;
+    --ko-bg: #fbe7e5;
+    --warn: #7d5600;
+    --warn-bg: #fbf0da;
+    --shadow: 0 1px 2px rgba(20, 24, 26, .06), 0 6px 16px rgba(20, 24, 26, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0f1214;
+      --panel: #171c1f;
+      --panel-2: #1c2225;
+      --ink: #e4e9e7;
+      --dim: #939d99;
+      --line: #2a3236;
+      --line-soft: #232a2e;
+      --accent: #74b4cf;
+      --accent-soft: #16303b;
+      --ok: #7bd3a2;
+      --ok-bg: #12301f;
+      --ko: #ff9d94;
+      --ko-bg: #3a1815;
+      --warn: #e9bd68;
+      --warn-bg: #33270d;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .3);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+
+  body {
+    --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.45;
+    padding: clamp(16px, 3vw, 40px) clamp(14px, 3vw, 40px) 64px;
+    -webkit-text-size-adjust: 100%;
+  }
+  h1, h2, h3, p { margin: 0; }
+
+  .bandeau { max-width: 1400px; margin: 0 auto 28px; }
+  .surtitre {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 8px;
+  }
+  .bandeau h1 {
+    font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.1rem);
+    font-weight: 640; letter-spacing: -.015em; text-wrap: balance;
+  }
+  .bandeau p { color: var(--dim); font-size: .92rem; max-width: 62ch; margin-top: 6px; }
+
+  .zone { max-width: 1400px; margin: 0 auto; }
+
+  .config {
+    display: grid; gap: 18px 24px; grid-template-columns: 1fr;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 20px; box-shadow: var(--shadow);
+  }
+  @media (min-width: 720px) { .config { grid-template-columns: repeat(3, 1fr); } }
+
+  .bloc h2 {
+    font-family: var(--mono); font-size: .7rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--dim);
+    padding-bottom: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--line-soft);
+  }
+  .champ + .champ { margin-top: 12px; }
+  .champ > span { display: block; font-size: .78rem; color: var(--dim); margin-bottom: 5px; }
+
+  input, select {
+    width: 100%; padding: 11px 12px; font: inherit; font-size: 1rem;
+    color: var(--ink); background: var(--panel-2);
+    border: 1px solid var(--line); border-radius: 9px;
+    -webkit-appearance: none; appearance: none;
+  }
+  select {
+    background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+                      linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position: right 16px center, right 11px center;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 34px;
+  }
+  input[type="number"] { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  input:focus-visible, select:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-color: var(--accent);
+  }
+
+  .section-titre {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    margin: 40px 0 14px;
+  }
+  .section-titre h2 { font-size: 1.12rem; font-weight: 620; letter-spacing: -.01em; }
+  .section-titre span { font-size: .84rem; color: var(--dim); }
+
+  .grille { display: grid; gap: 14px; grid-template-columns: 1fr; }
+  @media (min-width: 640px) { .grille { grid-template-columns: repeat(2, 1fr); } }
+  /* 1000px : les iPad en paysage (1080, 1180, 1366) passent bien à 4 colonnes. */
+  @media (min-width: 1000px) { .grille { grid-template-columns: repeat(4, 1fr); } }
+
+  .cas {
+    background: var(--panel); border: 1px solid var(--line);
+    border-left: 3px solid var(--etat, var(--line));
+    border-radius: 12px; padding: 16px; box-shadow: var(--shadow);
+    display: flex; flex-direction: column;
+  }
+  .cas.conforme { --etat: var(--ok); }
+  .cas.non-conforme { --etat: var(--ko); }
+
+  .cas h3 {
+    font-size: 1rem; font-weight: 640; letter-spacing: -.01em;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .verdict {
+    font-family: var(--mono); font-size: .66rem; letter-spacing: .08em;
+    text-transform: uppercase; padding: 4px 8px; border-radius: 999px; white-space: nowrap;
+  }
+  .verdict.oui { background: var(--ok-bg); color: var(--ok); }
+  .verdict.non { background: var(--ko-bg); color: var(--ko); }
+
+  .paroi { margin-top: 14px; }
+  .paroi > .tete {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    font-size: .8rem; font-weight: 620;
+  }
+  .variante {
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .04em;
+    color: var(--accent); background: var(--accent-soft);
+    padding: 2px 7px; border-radius: 5px; white-space: nowrap;
+  }
+  .fils { font-family: var(--mono); font-size: .72rem; color: var(--dim); margin-top: 4px; }
+  .paroi label { display: block; margin-top: 8px; }
+  .paroi label > span { display: block; font-size: .72rem; color: var(--dim); margin-bottom: 4px; }
+
+  .sorties {
+    margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line-soft);
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .sorties > div {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    font-size: .84rem;
+  }
+  .sorties .cle { color: var(--dim); }
+  .sorties .val {
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+    font-weight: 600; color: var(--ink); white-space: nowrap;
+  }
+  .sorties .majeur .val { font-size: 1.02rem; color: var(--accent); }
+
+  .note {
+    margin-top: 12px; padding: 8px 10px; border-radius: 8px;
+    font-size: .76rem; background: var(--warn-bg); color: var(--warn);
+  }
+  .motif {
+    margin-top: 12px; padding: 9px 11px; border-radius: 8px;
+    font-size: .78rem; background: var(--ko-bg); color: var(--ko); font-weight: 560;
+  }
+
+  .pied {
+    max-width: 1400px; margin: 44px auto 0; padding-top: 18px;
+    border-top: 1px solid var(--line); color: var(--dim); font-size: .8rem;
+  }
+  .pied code { font-family: var(--mono); font-size: .95em; }
+</style>
+</head>
+<body>
+
+<header class="bandeau">
+  <div class="surtitre">Prémur · configuration de paroi</div>
+  <h1>Épaisseur de paroi, noyau et hauteur de poutrelle</h1>
+  <p>
+    Choisissez l'épaisseur totale, puis la classe d'exposition et le treillis de chaque paroi.
+    Les quatre combinaisons de pose sont calculées en parallèle : chacune applique d'elle-même
+    la variante type 2 ou type 3 du treillis, selon la pose de la paroi concernée.
+  </p>
+</header>
+
+<div class="zone">
+  <section class="config">
+    <div class="bloc">
+      <h2>Prémur</h2>
+      <label class="champ">
+        <span>Épaisseur totale (cm)</span>
+        <input id="ep" type="number" inputmode="numeric" min="10" step="5" value="20">
+      </label>
+    </div>
+    <div class="bloc">
+      <h2>Paroi 1</h2>
+      <label class="champ"><span>Classe d'exposition</span><select id="classe1"></select></label>
+      <label class="champ"><span>Treillis</span><select id="treillis1"></select></label>
+    </div>
+    <div class="bloc">
+      <h2>Paroi 2</h2>
+      <label class="champ"><span>Classe d'exposition</span><select id="classe2"></select></label>
+      <label class="champ"><span>Treillis</span><select id="treillis2"></select></label>
+    </div>
+  </section>
+
+  <div class="section-titre">
+    <h2>Pose normale</h2>
+    <span>Les deux parois à leur épaisseur nominale.</span>
+  </div>
+  <div class="grille" id="normal"></div>
+
+  <div class="section-titre">
+    <h2>Mur retourné</h2>
+    <span>+5 mm ajoutés à l'épaisseur théorique de chaque paroi.</span>
+  </div>
+  <div class="grille" id="retourne"></div>
+
+  <footer class="pied">
+    Le calcul s'exécute entièrement dans l'appareil, sans connexion. Règles appliquées :
+    enrobage intérieur <code>15 mm</code>, paroi minimale <code>50 mm</code>,
+    noyau minimal <code>70 mm</code>, poutrelles standard de <code>90</code> à
+    <code>400 mm</code> par pas de <code>10</code>.
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+const ENROBAGE_INTERIEUR = 15;
+const EPAISSEUR_MIN_PAROI = 50;
+const NOYAU_MIN = 70;
+const PLUS_RETOURNEMENT = 5;
+
+const HA_POUTRELLE_P1 = 6;
+const HA_POUTRELLE_P2 = 8;
+
+const POUTRELLE_MIN = 90;
+const POUTRELLE_MAX = 400;
+const PAS_POUTRELLE = 10;
+const TOLERANCE_POUTRELLE = 2;
+
+// Diamètres des fils en mm, par treillis puis par type de pose.
+// Le treillis n'est pas posé de la même façon en type 2 et en type 3.
+const treillisData = {
+  "PAF10": {2: {v: 6,  h: 6},  3: {v: 6,  h: 6}},
+  "ST20V": {2: {v: 6,  h: 6},  3: {v: 6,  h: 6}},
+  "ST20H": {2: {v: 6,  h: 6},  3: {v: 6,  h: 8}},
+  "ST25V": {2: {v: 8,  h: 6},  3: {v: 6,  h: 6}},
+  "ST25H": {2: {v: 6,  h: 6},  3: {v: 6,  h: 8}},
+  "ST30V": {2: {v: 6,  h: 6},  3: {v: 6,  h: 6}},
+  "ST30H": {2: {v: 6,  h: 6},  3: {v: 6,  h: 6}},
+  "ST35V": {2: {v: 8,  h: 6},  3: {v: 8,  h: 6}},
+  "ST35H": {2: {v: 6,  h: 8},  3: {v: 6,  h: 8}},
+  "ST50V": {2: {v: 8,  h: 8},  3: {v: 8,  h: 8}},
+  "ST50H": {2: {v: 6,  h: 8},  3: {v: 6,  h: 8}},
+  "ST60V": {2: {v: 12, h: 8},  3: {v: 10, h: 8}},
+  "ST60H": {2: {v: 8,  h: 10}, 3: {v: 6,  h: 10}},
+  "ST15C": {2: {v: 6,  h: 6},  3: {v: 6,  h: 6}},
+  "ST25C": {2: {v: 8,  h: 6},  3: {v: 6,  h: 8}},
+  "ST40C": {2: {v: 10, h: 8},  3: {v: 8,  h: 10}},
+  "ST50C": {2: {v: 10, h: 8},  3: {v: 8,  h: 12}},
+  "ST65C": {2: {v: 12, h: 10}, 3: {v: 10, h: 10}}
+};
+
+const enrobageData = {
+  XC1: 20, XC2: 25, XC3: 30, XC4: 30,
+  XD1: 35, XD2: 40, XD3: 45,
+  XS1: 35, XS2: 40, XS3: 45,
+  XF1: 30, XF2: 35, XF3: 40, XF4: 45,
+  XA1: 35, XA2: 40, XA3: 45
+};
+
+const scenarios = [
+  ["Type 2-2", 2, 2],
+  ["Type 3-2", 3, 2],
+  ["Type 3-3", 3, 3],
+  ["Type 2-3", 2, 3]
+];
+
+const arrondi5 = v => Math.ceil(v / 5) * 5;
+const fils = (treillis, type) => treillisData[treillis][type];
+const acierPoutrelleP1 = (t, type) => Math.max(fils(t, type).v, HA_POUTRELLE_P1);
+const acierPoutrelleP2 = (t, type) => Math.max(fils(t, type).v, HA_POUTRELLE_P2);
+
+function calculParoi(enrobageExt, treillis, type, ajoutRetournement) {
+  const f = fils(treillis, type);
+  const theorique = enrobageExt + f.v + f.h + ENROBAGE_INTERIEUR + ajoutRetournement;
+  return { theorique, paroi: arrondi5(Math.max(EPAISSEUR_MIN_PAROI, theorique)) };
+}
+
+function hauteurPoutrelle(epTotale, enr1, enr2, t1, t2, type1, type2) {
+  return epTotale - enr1 - enr2 - acierPoutrelleP1(t1, type1) - acierPoutrelleP2(t2, type2);
+}
+
+// Équivalent du min() Python : à égalité d'écart, la plus petite poutrelle gagne.
+function poutrelleStandardProche(hauteur) {
+  let best = null;
+  for (let p = POUTRELLE_MIN; p <= POUTRELLE_MAX; p += PAS_POUTRELLE) {
+    if (best === null || Math.abs(p - hauteur) < Math.abs(best - hauteur)) best = p;
+  }
+  return best;
+}
+
+function calculPoutrelle(epTotale, enr1, enr2, t1, t2, type1, type2) {
+  const hInitiale = hauteurPoutrelle(epTotale, enr1, enr2, t1, t2, type1, type2);
+  const p = poutrelleStandardProche(hInitiale);
+  const bas = p - TOLERANCE_POUTRELLE;
+  const haut = p + TOLERANCE_POUTRELLE;
+
+  let hCorrigee = hInitiale;
+  if (hInitiale < bas) hCorrigee = bas;
+  else if (hInitiale > haut) hCorrigee = haut;
+
+  return { hauteurInitiale: hInitiale, poutrelle: poutrelleStandardProche(hCorrigee) };
+}
+
+const $ = id => document.getElementById(id);
+const echappe = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const remplir = (sel, cles) => {
+  sel.innerHTML = cles.map(k => `<option value="${echappe(k)}">${echappe(k)}</option>`).join("");
+};
+
+remplir($("classe1"), Object.keys(enrobageData));
+remplir($("classe2"), Object.keys(enrobageData));
+remplir($("treillis1"), Object.keys(treillisData));
+remplir($("treillis2"), Object.keys(treillisData));
+$("classe1").value = "XC4";
+$("classe2").value = "XC4";
+
+// Enrobages saisis à la main : une valeur par section, scénario et paroi.
+let overrides = {};
+const cle = (section, scenario, paroi) => `${section}|${scenario}|${paroi}`;
+
+function blocParoi(n, section, nom, treillis, type, classe, enrobage) {
+  const f = fils(treillis, type);
+  return `<div class="paroi">
+      <div class="tete">
+        <span>Paroi ${n}</span>
+        <span class="variante">${echappe(treillis)} · type ${type}</span>
+      </div>
+      <div class="fils">vertical ${f.v} mm · horizontal ${f.h} mm</div>
+      <label>
+        <span>Enrobage extérieur — ${echappe(classe)}</span>
+        <input type="number" inputmode="numeric" min="0" step="5" value="${enrobage}"
+               data-section="${section}" data-scenario="${echappe(nom)}" data-paroi="${n}">
+      </label>
+    </div>`;
+}
+
+function rendre() {
+  const epTotale = (parseInt($("ep").value, 10) || 0) * 10;
+  const classe1 = $("classe1").value, classe2 = $("classe2").value;
+  const t1 = $("treillis1").value, t2 = $("treillis2").value;
+  const base1 = enrobageData[classe1], base2 = enrobageData[classe2];
+
+  [["normal", 0], ["retourne", PLUS_RETOURNEMENT]].forEach(([section, ajout]) => {
+    $(section).innerHTML = scenarios.map(([nom, type1, type2]) => {
+      const e1 = overrides[cle(section, nom, 1)] ?? base1;
+      const e2 = overrides[cle(section, nom, 2)] ?? base2;
+
+      const p1 = calculParoi(e1, t1, type1, ajout);
+      const p2 = calculParoi(e2, t2, type2, ajout);
+      const noyau = epTotale - p1.paroi - p2.paroi;
+      const po = calculPoutrelle(epTotale, e1, e2, t1, t2, type1, type2);
+      const ecart = po.hauteurInitiale - po.poutrelle;
+
+      const conforme = noyau >= NOYAU_MIN;
+      let motif = "";
+      if (noyau < 0) motif = `<div class="motif">Épaisseur totale insuffisante : les deux parois dépassent déjà ${epTotale} mm.</div>`;
+      else if (!conforme) motif = `<div class="motif">Noyau de ${noyau} mm, sous le minimum de ${NOYAU_MIN} mm.</div>`;
+
+      const note = (n, val, base) => val !== base
+        ? `<div class="note">Enrobage P${n} saisi à la main : ${val} mm au lieu de ${base} mm.</div>` : "";
+
+      return `<article class="cas ${conforme ? "conforme" : "non-conforme"}">
+        <h3>${echappe(nom)}
+          <span class="verdict ${conforme ? "oui" : "non"}">${conforme ? "Conforme" : "Non conforme"}</span>
+        </h3>
+        ${blocParoi(1, section, nom, t1, type1, classe1, e1)}
+        ${blocParoi(2, section, nom, t2, type2, classe2, e2)}
+        <div class="sorties">
+          <div><span class="cle">Paroi 1</span><span class="val">${p1.paroi} mm</span></div>
+          <div><span class="cle">Paroi 2</span><span class="val">${p2.paroi} mm</span></div>
+          <div class="majeur"><span class="cle">Noyau</span><span class="val">${noyau} mm</span></div>
+          <div><span class="cle">Hauteur théorique</span><span class="val">${po.hauteurInitiale} mm</span></div>
+          <div class="majeur"><span class="cle">Poutrelle retenue</span><span class="val">${po.poutrelle} mm</span></div>
+          <div><span class="cle">Écart</span><span class="val">${ecart >= 0 ? "+" : ""}${ecart} mm</span></div>
+        </div>
+        ${note(1, e1, base1)}${note(2, e2, base2)}
+        ${motif}
+      </article>`;
+    }).join("");
+  });
+}
+
+document.addEventListener("input", e => {
+  const t = e.target;
+  if (t.dataset && t.dataset.scenario) {
+    const val = parseInt(t.value, 10);
+    if (!Number.isNaN(val)) {
+      overrides[cle(t.dataset.section, t.dataset.scenario, t.dataset.paroi)] = val;
+      rendre();
+    }
+    return;
+  }
+  if (t === $("ep")) rendre();
+});
+
+// Changer une classe ou un treillis remet les enrobages à la valeur normative.
+["classe1", "classe2", "treillis1", "treillis2"].forEach(id => {
+  $(id).addEventListener("change", () => { overrides = {}; rendre(); });
+});
+
+rendre();
+
+// Mise en cache pour l'usage hors connexion. Sans effet en ouverture directe du fichier.
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
+}
+</script>
+</body>
+</html>
