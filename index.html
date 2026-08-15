@@ -368,9 +368,17 @@ const fils = (treillis, type) => treillisData[treillis][type];
 const acierPoutrelleP1 = (t, type) => Math.max(fils(t, type).v, HA_POUTRELLE_P1);
 const acierPoutrelleP2 = (t, type) => Math.max(fils(t, type).v, HA_POUTRELLE_P2);
 
-function calculParoi(enrobageExt, treillis, type, ajoutRetournement) {
+// Empilage depuis le coffrage : cale d'enrobage, premier lit de fils, second
+// lit, puis l'enrobage intérieur contre le noyau. Au premier lit la poutrelle
+// passe au même endroit que le fil vertical du treillis : c'est le plus gros
+// des deux qui commande. Le filant vaut 6 en paroi 1 et 8 en paroi 2 (l'usine
+// retourne la première paroi sur la seconde, c'est le filant haut HA8 qui se
+// présente). Sur un gros treillis le fil vertical l'emporte et le filant s'y noie.
+// Croquis PAF10, cale 20 : paroi 1 -> 20+max(6,6)+6+15 = 47 ; paroi 2 -> 49.
+function calculParoi(enrobageExt, treillis, type, filantPoutrelle, ajoutRetournement) {
   const f = fils(treillis, type);
-  const theorique = enrobageExt + f.v + f.h + ENROBAGE_INTERIEUR + ajoutRetournement;
+  const theorique = enrobageExt + Math.max(f.v, filantPoutrelle) + f.h
+                  + ENROBAGE_INTERIEUR + ajoutRetournement;
   return { theorique, paroi: arrondi5(Math.max(EPAISSEUR_MIN_PAROI, theorique)) };
 }
 
@@ -529,8 +537,8 @@ function rendre() {
       const e1 = overrides[cle(section, nom, 1)] ?? base1;
       const e2 = overrides[cle(section, nom, 2)] ?? base2;
 
-      const p1 = calculParoi(e1, t1, type1, ajout);
-      const p2 = calculParoi(e2, t2, type2, ajout);
+      const p1 = calculParoi(e1, t1, type1, HA_POUTRELLE_P1, ajout);
+      const p2 = calculParoi(e2, t2, type2, HA_POUTRELLE_P2, ajout);
       const noyau = epTotale - p1.paroi - p2.paroi;
       const po = calculPoutrelle(epTotale, e1, e2, t1, t2, type1, type2);
       const ecart = po.hauteurInitiale - po.poutrelle;

@@ -193,12 +193,28 @@ def acier_poutrelle_p1(treillis, type_paroi):
 def acier_poutrelle_p2(treillis, type_paroi):
     return max(fils(treillis, type_paroi)["vertical"], HA_POUTRELLE_P2)
 
-def calcul_paroi(enrobage_ext, treillis, type_paroi, ajout_retournement=0):
+def calcul_paroi(enrobage_ext, treillis, type_paroi, filant_poutrelle, ajout_retournement=0):
+    """Épaisseur de paroi, en mm.
+
+    Empilage depuis le coffrage : cale d'enrobage, puis le lit de fils au
+    contact, puis le second lit, puis l'enrobage intérieur contre le noyau.
+
+    Au niveau du premier lit, la poutrelle passe au même endroit que le fil
+    vertical du treillis : c'est le plus gros des deux qui commande l'épaisseur.
+    Le filant vaut 6 en paroi 1 et 8 en paroi 2 (l'usine retourne la première
+    paroi sur la seconde, donc c'est le filant haut HA8 qui se présente).
+    Sur un gros treillis (ST65C par ex.) le fil vertical l'emporte et le filant
+    de poutrelle se noie dedans.
+
+    Croquis de référence : PAF10, cale 20 mm
+      paroi 1 -> 20 + max(6, 6) + 6 + 15 = 47 mm
+      paroi 2 -> 20 + max(6, 8) + 6 + 15 = 49 mm
+    """
     f = fils(treillis, type_paroi)
 
     epaisseur_theorique = (
         enrobage_ext
-        + f["vertical"]
+        + max(f["vertical"], filant_poutrelle)
         + f["horizontal"]
         + ENROBAGE_INTERIEUR
         + ajout_retournement
@@ -359,10 +375,10 @@ def afficher_resultats(titre, ajout_retournement=0):
             )
 
             ep_theo_1, ep_p1 = calcul_paroi(
-                enrobage_1, treillis_1, type_p1, ajout_retournement
+                enrobage_1, treillis_1, type_p1, HA_POUTRELLE_P1, ajout_retournement
             )
             ep_theo_2, ep_p2 = calcul_paroi(
-                enrobage_2, treillis_2, type_p2, ajout_retournement
+                enrobage_2, treillis_2, type_p2, HA_POUTRELLE_P2, ajout_retournement
             )
 
             noyau = epaisseur_totale_mm - ep_p1 - ep_p2
