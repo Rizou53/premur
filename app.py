@@ -12,7 +12,7 @@ EPAISSEURS = ["16", "18", "20", "24", "25", "30", "35", "40"]
 
 SELECTIONS = [
     {"cle": "usine", "intitule": "Usine",
-     "options": ["Usine 1", "Usine 2", "Usine 3"], "defaut": None},
+     "options": ["IDSB PN", "BÜRKLE", "PREFAXIS"], "defaut": None},
     {"cle": "coupe_feu", "intitule": "Coupe-feu",
      "options": ["0,5 H", "1 H", "1,5 H", "2 H", "2,5 H", "3 H", "3,5 H", "4 H"], "defaut": None},
     {"cle": "epaisseur", "intitule": "Épaisseur (cm)",
@@ -22,7 +22,7 @@ SELECTIONS = [
 # Épaisseurs (cm) qu'une usine ne sait pas produire. Une usine absente de ce
 # tableau fabrique toute la gamme. À compléter au fur et à mesure.
 EPAISSEURS_HORS_GAMME = {
-    "Usine 1": ["16"],
+    "BÜRKLE": ["16"],
 }
 
 def indisponibles(cle_ligne):
@@ -166,12 +166,15 @@ CLASSES_EXPOSITION = [
     "XA1", "XA2", "XA3",
 ]
 
+# Classe la plus courante en production : on démarre dessus plutôt que sur XC1.
+CLASSE_PAR_DEFAUT = "XC4"
+
 # Enrobage extérieur minimal (mm) par classe d'exposition. Ces valeurs sont
-# propres à chaque usine : seule l'Usine 1 est renseignée pour l'instant, les
+# propres à chaque usine : seule BÜRKLE est renseignée pour l'instant, les
 # autres restent en attente plutôt que d'hériter de chiffres qui ne sont pas
 # les leurs.
 ENROBAGES_PAR_USINE = {
-    "Usine 1": {
+    "BÜRKLE": {
         "XC1": 15, "XC2": 15, "XC3": 15,
         "XC4": 20, "XF1": 20,
         "XF2": 25, "XF3": 25, "XS1": 25, "XD1": 25, "XA1": 25,
@@ -233,6 +236,15 @@ def hauteur_poutrelle(
     type_p1,
     type_p2,
 ):
+    """Hauteur théorique de poutrelle, en mm.
+
+    Volontairement sans `ajout_retournement` : retourner le mur épaissit les
+    parois mais ne déplace pas la poutrelle, qui reste calée entre les mêmes
+    lits de fils. C'est un choix confirmé, pas un oubli.
+
+    Croquis de référence, type 2-2, PAF10, épaisseur 200, cales 20 :
+      200 − 20 − 20 − 6 (filant treillis P1) − 8 (filant poutrelle P2) = 146 mm
+    """
     return (
         epaisseur_totale_mm
         - enrobage_p1
@@ -301,7 +313,7 @@ if choix["usine"] is None:
 if choix["usine"] not in ENROBAGES_PAR_USINE:
     st.warning(
         f"Les enrobages de {choix['usine']} ne sont pas encore renseignés. "
-        "Seule l'Usine 1 est programmée pour l'instant."
+        "Seule BÜRKLE est programmée pour l'instant."
     )
     st.stop()
 
@@ -318,12 +330,20 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.header("Paroi 1")
-    classe_1 = st.selectbox("Classe d’exposition Paroi 1", CLASSES_EXPOSITION)
+    classe_1 = st.selectbox(
+        "Classe d’exposition Paroi 1",
+        CLASSES_EXPOSITION,
+        index=CLASSES_EXPOSITION.index(CLASSE_PAR_DEFAUT),
+    )
     treillis_1 = st.selectbox("Treillis Paroi 1", list(treillis_data.keys()))
 
 with col2:
     st.header("Paroi 2")
-    classe_2 = st.selectbox("Classe d’exposition Paroi 2", CLASSES_EXPOSITION)
+    classe_2 = st.selectbox(
+        "Classe d’exposition Paroi 2",
+        CLASSES_EXPOSITION,
+        index=CLASSES_EXPOSITION.index(CLASSE_PAR_DEFAUT),
+    )
     treillis_2 = st.selectbox("Treillis Paroi 2", list(treillis_data.keys()))
 
 enrobage_base_1 = enrobage_data[classe_1]

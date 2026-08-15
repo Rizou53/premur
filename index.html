@@ -342,11 +342,11 @@ const CLASSES_EXPOSITION = [
 ];
 
 // Enrobage extérieur minimal (mm) par classe d'exposition. Ces valeurs sont
-// propres à chaque usine : seule l'Usine 1 est renseignée pour l'instant, les
+// propres à chaque usine : seule BÜRKLE est renseignée pour l'instant, les
 // autres restent en attente plutôt que d'hériter de chiffres qui ne sont pas
 // les leurs.
 const ENROBAGES_PAR_USINE = {
-  "Usine 1": {
+  "BÜRKLE": {
     XC1: 15, XC2: 15, XC3: 15,
     XC4: 20, XF1: 20,
     XF2: 25, XF3: 25, XS1: 25, XD1: 25, XA1: 25,
@@ -382,6 +382,10 @@ function calculParoi(enrobageExt, treillis, type, filantPoutrelle, ajoutRetourne
   return { theorique, paroi: arrondi5(Math.max(EPAISSEUR_MIN_PAROI, theorique)) };
 }
 
+// Volontairement sans ajoutRetournement : retourner le mur épaissit les parois
+// mais ne déplace pas la poutrelle, qui reste calée entre les mêmes lits de
+// fils. C'est un choix confirmé, pas un oubli.
+// Croquis type 2-2, PAF10, ép. 200, cales 20 : 200 − 20 − 20 − 6 − 8 = 146 mm.
 function hauteurPoutrelle(epTotale, enr1, enr2, t1, t2, type1, type2) {
   return epTotale - enr1 - enr2 - acierPoutrelleP1(t1, type1) - acierPoutrelleP2(t2, type2);
 }
@@ -414,7 +418,7 @@ function calculPoutrelle(epTotale, enr1, enr2, t1, t2, type1, type2) {
 const EPAISSEURS = ["16", "18", "20", "24", "25", "30", "35", "40"];
 
 const selections = [
-  { cle: "usine", nom: "Usine", options: ["Usine 1", "Usine 2", "Usine 3"], defaut: null },
+  { cle: "usine", nom: "Usine", options: ["IDSB PN", "BÜRKLE", "PREFAXIS"], defaut: null },
   { cle: "coupeFeu", nom: "Coupe-feu",
     options: ["0,5 H", "1 H", "1,5 H", "2 H", "2,5 H", "3 H", "3,5 H", "4 H"], defaut: null },
   { cle: "epaisseur", nom: "Épaisseur (cm)", options: EPAISSEURS, defaut: "20" },
@@ -423,7 +427,7 @@ const selections = [
 // Épaisseurs (cm) qu'une usine ne sait pas produire. Une usine absente de ce
 // tableau fabrique toute la gamme. À compléter au fur et à mesure.
 const EPAISSEURS_HORS_GAMME = {
-  "Usine 1": ["16"],
+  "BÜRKLE": ["16"],
 };
 
 const choisis = {};
@@ -445,8 +449,10 @@ remplir($("classe1"), CLASSES_EXPOSITION);
 remplir($("classe2"), CLASSES_EXPOSITION);
 remplir($("treillis1"), Object.keys(treillisData));
 remplir($("treillis2"), Object.keys(treillisData));
-$("classe1").value = "XC4";
-$("classe2").value = "XC4";
+// Classe la plus courante en production : on démarre dessus plutôt que sur XC1.
+const CLASSE_PAR_DEFAUT = "XC4";
+$("classe1").value = CLASSE_PAR_DEFAUT;
+$("classe2").value = CLASSE_PAR_DEFAUT;
 
 // Enrobages saisis à la main : une valeur par section, scénario et paroi.
 let overrides = {};
@@ -520,7 +526,7 @@ function rendre() {
   }
   if (!(choisis.usine in ENROBAGES_PAR_USINE)) {
     return enAttente(`Les enrobages de ${choisis.usine} ne sont pas encore renseignés.`
-      + " Seule l'Usine 1 est programmée pour l'instant.");
+      + " Seule BÜRKLE est programmée pour l'instant.");
   }
   if (choisis.epaisseur == null) {
     return enAttente("Choisissez une épaisseur de prémur pour lancer le calcul.");
