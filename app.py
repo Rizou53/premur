@@ -4,6 +4,122 @@ import math
 st.set_page_config(page_title="Prémur IA V10", layout="wide")
 st.title("🏗️ Prémur - CONFIG")
 
+# --- Tableau de sélection -------------------------------------------------
+# Une ligne par réglage, une case par choix possible. La case choisie se grise.
+# Aucun de ces choix n'entre encore dans le calcul : les règles restent à définir.
+
+EPAISSEURS = ["16", "18", "20", "24", "25", "30", "35", "40"]
+
+SELECTIONS = [
+    {"cle": "usine", "intitule": "Usine",
+     "options": ["Usine 1", "Usine 2", "Usine 3"], "defaut": None},
+    {"cle": "coupe_feu", "intitule": "Coupe-feu",
+     "options": ["0,5 H", "1 H", "1,5 H", "2 H", "2,5 H", "3 H", "3,5 H", "4 H"], "defaut": None},
+    {"cle": "epaisseur", "intitule": "Épaisseur (cm)",
+     "options": EPAISSEURS, "defaut": "20"},
+]
+
+# Épaisseurs (cm) qu'une usine ne sait pas produire. Une usine absente de ce
+# tableau fabrique toute la gamme. À compléter au fur et à mesure.
+EPAISSEURS_HORS_GAMME = {
+    "Usine 1": ["16"],
+}
+
+def indisponibles(cle_ligne):
+    """Options à barrer sur cette ligne, compte tenu des choix déjà faits."""
+    if cle_ligne != "epaisseur":
+        return set()
+    return set(EPAISSEURS_HORS_GAMME.get(st.session_state.get("sel_usine"), []))
+
+def tableau_selections():
+    """Dessine les lignes de choix et renvoie {clé: option choisie ou None}."""
+    for ligne in SELECTIONS:
+        st.session_state.setdefault(f"sel_{ligne['cle']}", ligne["defaut"])
+
+    # Changer d'usine peut retirer de la gamme l'épaisseur déjà choisie : on la
+    # relâche, sinon le calcul tournerait sur une épaisseur que l'usine ne fait pas.
+    for ligne in SELECTIONS:
+        etat = f"sel_{ligne['cle']}"
+        if st.session_state[etat] in indisponibles(ligne["cle"]):
+            st.session_state[etat] = None
+
+    choisis = {}
+    regles_grisees = []
+
+    for ligne in SELECTIONS:
+        cle, intitule, options = ligne["cle"], ligne["intitule"], ligne["options"]
+        etat = f"sel_{cle}"
+        hors_gamme = indisponibles(cle)
+
+        cols = st.columns([1.4] + [1] * len(options), vertical_alignment="center")
+        cols[0].markdown(f"<div class='intitule-choix'>{intitule}</div>", unsafe_allow_html=True)
+
+        for indice, (col, option) in enumerate(zip(cols[1:], options)):
+            # Recliquer sur la case déjà choisie l'annule : pas d'impasse.
+            if col.button(
+                option,
+                key=f"btn_{cle}_{indice}",
+                use_container_width=True,
+                disabled=option in hors_gamme,
+            ):
+                st.session_state[etat] = None if st.session_state[etat] == option else option
+                st.rerun()
+
+            if st.session_state[etat] == option:
+                regles_grisees.append(f".st-key-btn_{cle}_{indice} button")
+
+        if hors_gamme:
+            usine = st.session_state.get("sel_usine")
+            cols[0].caption(f"{usine} ne produit pas : {', '.join(sorted(hors_gamme))} cm")
+
+        choisis[cle] = st.session_state[etat]
+
+    if regles_grisees:
+        st.markdown(
+            "<style>%s { background: rgba(128,128,128,.42) !important; "
+            "border-color: rgba(128,128,128,.75) !important; font-weight: 700 !important; }</style>"
+            % ", ".join(regles_grisees),
+            unsafe_allow_html=True,
+        )
+
+    return choisis
+
+def resume_selections(choisis):
+    """Ligne de rappel affichée au-dessus des résultats."""
+    morceaux = [
+        f"{ligne['intitule']} : {choisis[ligne['cle']] or '—'}"
+        for ligne in SELECTIONS
+    ]
+    return " · ".join(morceaux)
+
+st.markdown(
+    """
+    <style>
+    .intitule-choix {
+        font-weight: 600; font-size: 0.9rem;
+        padding: 6px 4px; opacity: 0.85;
+    }
+    /* Les cases de choix : bords droits et jointifs, pour un rendu de tableau. */
+    [class*="st-key-btn_"] button {
+        border-radius: 4px;
+        border: 1px solid rgba(128, 128, 128, 0.35);
+        padding: 6px 4px;
+    }
+    /* Hors gamme pour l'usine choisie : encore lisible, mais visiblement inerte. */
+    [class*="st-key-btn_"] button:disabled {
+        opacity: 0.3;
+        border-style: dashed !important;
+        background: transparent !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+choix = tableau_selections()
+
+st.write("---")
+
 ENROBAGE_INTERIEUR = 15
 EPAISSEUR_MIN_PAROI = 50
 NOYAU_MIN = 70
@@ -41,12 +157,28 @@ treillis_data = {
     "ST65C": {2: {"vertical": 12, "horizontal": 10}, 3: {"vertical": 10, "horizontal": 10}},
 }
 
-enrobage_data = {
-    "XC1": 20, "XC2": 25, "XC3": 30, "XC4": 30,
-    "XD1": 35, "XD2": 40, "XD3": 45,
-    "XS1": 35, "XS2": 40, "XS3": 45,
-    "XF1": 30, "XF2": 35, "XF3": 40, "XF4": 45,
-    "XA1": 35, "XA2": 40, "XA3": 45,
+# Ordre d'affichage des classes d'exposition dans les listes déroulantes.
+CLASSES_EXPOSITION = [
+    "XC1", "XC2", "XC3", "XC4",
+    "XD1", "XD2", "XD3",
+    "XS1", "XS2", "XS3",
+    "XF1", "XF2", "XF3", "XF4",
+    "XA1", "XA2", "XA3",
+]
+
+# Enrobage extérieur minimal (mm) par classe d'exposition. Ces valeurs sont
+# propres à chaque usine : seule l'Usine 1 est renseignée pour l'instant, les
+# autres restent en attente plutôt que d'hériter de chiffres qui ne sont pas
+# les leurs.
+ENROBAGES_PAR_USINE = {
+    "Usine 1": {
+        "XC1": 15, "XC2": 15, "XC3": 15,
+        "XC4": 20, "XF1": 20,
+        "XF2": 25, "XF3": 25, "XS1": 25, "XD1": 25, "XA1": 25,
+        "XS2": 30, "XD2": 30, "XA2": 30,
+        "XF4": 35,
+        "XS3": 40, "XD3": 40, "XA3": 40,
+    },
 }
 
 def arrondi_5(valeur):
@@ -144,25 +276,38 @@ def calcul_poutrelle(
         "enrobage_p1_corrige": enrobage_p1_corrige,
     }
 
-epaisseur_totale_cm = st.number_input(
-    "Épaisseur totale du prémur (cm)",
-    min_value=10,
-    value=20,
-    step=5,
-)
+# L'enrobage dépend de l'usine : sans usine choisie, on ne sait pas quelle
+# table appliquer, donc on ne calcule rien plutôt que de deviner.
+if choix["usine"] is None:
+    st.warning("Choisissez une usine : les enrobages minimaux lui sont propres.")
+    st.stop()
 
+if choix["usine"] not in ENROBAGES_PAR_USINE:
+    st.warning(
+        f"Les enrobages de {choix['usine']} ne sont pas encore renseignés. "
+        "Seule l'Usine 1 est programmée pour l'instant."
+    )
+    st.stop()
+
+enrobage_data = ENROBAGES_PAR_USINE[choix["usine"]]
+
+if choix["epaisseur"] is None:
+    st.warning("Choisissez une épaisseur de prémur pour lancer le calcul.")
+    st.stop()
+
+epaisseur_totale_cm = int(choix["epaisseur"])
 epaisseur_totale_mm = epaisseur_totale_cm * 10
 
 col1, col2 = st.columns(2)
 
 with col1:
     st.header("Paroi 1")
-    classe_1 = st.selectbox("Classe d’exposition Paroi 1", list(enrobage_data.keys()))
+    classe_1 = st.selectbox("Classe d’exposition Paroi 1", CLASSES_EXPOSITION)
     treillis_1 = st.selectbox("Treillis Paroi 1", list(treillis_data.keys()))
 
 with col2:
     st.header("Paroi 2")
-    classe_2 = st.selectbox("Classe d’exposition Paroi 2", list(enrobage_data.keys()))
+    classe_2 = st.selectbox("Classe d’exposition Paroi 2", CLASSES_EXPOSITION)
     treillis_2 = st.selectbox("Treillis Paroi 2", list(treillis_data.keys()))
 
 enrobage_base_1 = enrobage_data[classe_1]
@@ -177,6 +322,7 @@ scenarios = [
 
 def afficher_resultats(titre, ajout_retournement=0):
     st.subheader(titre)
+    st.caption(resume_selections(choix))
     cols = st.columns(4)
 
     for col, (nom_scenario, type_p1, type_p2) in zip(cols, scenarios):

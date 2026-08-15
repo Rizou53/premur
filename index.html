@@ -27,6 +27,7 @@
     --ko-bg: #fbe7e5;
     --warn: #7d5600;
     --warn-bg: #fbf0da;
+    --retenu: #d8dcd9;
     --shadow: 0 1px 2px rgba(20, 24, 26, .06), 0 6px 16px rgba(20, 24, 26, .05);
   }
   @media (prefers-color-scheme: dark) {
@@ -46,6 +47,7 @@
       --ko-bg: #3a1815;
       --warn: #e9bd68;
       --warn-bg: #33270d;
+      --retenu: #333c40;
       --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .3);
     }
   }
@@ -79,12 +81,63 @@
 
   .zone { max-width: 1400px; margin: 0 auto; }
 
+  /* Tableau de sélection : une ligne par réglage, une case par choix.
+     La case choisie se grise. Ces choix n'entrent pas encore dans le calcul. */
+  .choix {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 16px 18px; box-shadow: var(--shadow);
+    margin-bottom: 18px;
+  }
+  .choix-ligne { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .choix-ligne + .choix-ligne {
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-soft);
+  }
+  .choix-ligne > .nom {
+    flex: 0 0 96px;
+    font-family: var(--mono); font-size: .7rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--dim);
+  }
+  .choix-ligne > .cases { display: flex; gap: 8px; flex-wrap: wrap; flex: 1 1 260px; }
+  .case-choix {
+    flex: 1 1 auto; min-width: 76px;
+    padding: 9px 12px; font: inherit; font-size: .88rem; text-align: center;
+    color: var(--ink); background: var(--panel-2);
+    border: 1px solid var(--line); border-radius: 8px; cursor: pointer;
+  }
+  .case-choix:hover { border-color: var(--accent); }
+  .case-choix:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .case-choix[aria-pressed="true"] {
+    background: var(--retenu); border-color: var(--dim);
+    font-weight: 680; color: var(--ink);
+  }
+  /* Hors gamme pour l'usine choisie : encore lisible, mais visiblement inerte. */
+  .case-choix:disabled {
+    opacity: .32; background: transparent;
+    border-style: dashed; cursor: not-allowed;
+  }
+  .case-choix:disabled:hover { border-color: var(--line); }
+  .hors-gamme {
+    flex: 1 0 100%; margin-top: 6px;
+    font-size: .72rem; color: var(--warn);
+  }
+  .attente {
+    grid-column: 1 / -1;
+    background: var(--panel); border: 1px dashed var(--line);
+    border-radius: 12px; padding: 22px; text-align: center;
+    color: var(--dim); font-size: .88rem;
+  }
+  .rappel {
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .04em;
+    color: var(--dim); background: var(--panel-2);
+    border: 1px solid var(--line-soft); border-radius: 6px; padding: 3px 8px;
+  }
+
   .config {
     display: grid; gap: 18px 24px; grid-template-columns: 1fr;
     background: var(--panel); border: 1px solid var(--line);
     border-radius: 14px; padding: 20px; box-shadow: var(--shadow);
   }
-  @media (min-width: 720px) { .config { grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width: 720px) { .config { grid-template-columns: repeat(2, 1fr); } }
 
   .bloc h2 {
     font-family: var(--mono); font-size: .7rem; letter-spacing: .12em;
@@ -203,14 +256,9 @@
 </header>
 
 <div class="zone">
+  <section class="choix" id="choix"></section>
+
   <section class="config">
-    <div class="bloc">
-      <h2>Prémur</h2>
-      <label class="champ">
-        <span>Épaisseur totale (cm)</span>
-        <input id="ep" type="number" inputmode="numeric" min="10" step="5" value="20">
-      </label>
-    </div>
     <div class="bloc">
       <h2>Paroi 1</h2>
       <label class="champ"><span>Classe d'exposition</span><select id="classe1"></select></label>
@@ -226,12 +274,14 @@
   <div class="section-titre">
     <h2>Pose normale</h2>
     <span>Les deux parois à leur épaisseur nominale.</span>
+    <span class="rappel" data-rappel></span>
   </div>
   <div class="grille" id="normal"></div>
 
   <div class="section-titre">
     <h2>Mur retourné</h2>
     <span>+5 mm ajoutés à l'épaisseur théorique de chaque paroi.</span>
+    <span class="rappel" data-rappel></span>
   </div>
   <div class="grille" id="retourne"></div>
 
@@ -282,12 +332,28 @@ const treillisData = {
   "ST65C": {2: {v: 12, h: 10}, 3: {v: 10, h: 10}}
 };
 
-const enrobageData = {
-  XC1: 20, XC2: 25, XC3: 30, XC4: 30,
-  XD1: 35, XD2: 40, XD3: 45,
-  XS1: 35, XS2: 40, XS3: 45,
-  XF1: 30, XF2: 35, XF3: 40, XF4: 45,
-  XA1: 35, XA2: 40, XA3: 45
+// Ordre d'affichage des classes d'exposition dans les listes déroulantes.
+const CLASSES_EXPOSITION = [
+  "XC1", "XC2", "XC3", "XC4",
+  "XD1", "XD2", "XD3",
+  "XS1", "XS2", "XS3",
+  "XF1", "XF2", "XF3", "XF4",
+  "XA1", "XA2", "XA3",
+];
+
+// Enrobage extérieur minimal (mm) par classe d'exposition. Ces valeurs sont
+// propres à chaque usine : seule l'Usine 1 est renseignée pour l'instant, les
+// autres restent en attente plutôt que d'hériter de chiffres qui ne sont pas
+// les leurs.
+const ENROBAGES_PAR_USINE = {
+  "Usine 1": {
+    XC1: 15, XC2: 15, XC3: 15,
+    XC4: 20, XF1: 20,
+    XF2: 25, XF3: 25, XS1: 25, XD1: 25, XA1: 25,
+    XS2: 30, XD2: 30, XA2: 30,
+    XF4: 35,
+    XS3: 40, XD3: 40, XA3: 40,
+  },
 };
 
 const scenarios = [
@@ -334,14 +400,41 @@ function calculPoutrelle(epTotale, enr1, enr2, t1, t2, type1, type2) {
   return { hauteurInitiale: hInitiale, poutrelle: poutrelleStandardProche(hCorrigee) };
 }
 
+// Tableau de sélection. Une ligne par réglage, une case par choix possible.
+// Seule l'épaisseur entre pour l'instant dans le calcul ; usine et coupe-feu
+// sont posés mais leurs règles restent à écrire.
+const EPAISSEURS = ["16", "18", "20", "24", "25", "30", "35", "40"];
+
+const selections = [
+  { cle: "usine", nom: "Usine", options: ["Usine 1", "Usine 2", "Usine 3"], defaut: null },
+  { cle: "coupeFeu", nom: "Coupe-feu",
+    options: ["0,5 H", "1 H", "1,5 H", "2 H", "2,5 H", "3 H", "3,5 H", "4 H"], defaut: null },
+  { cle: "epaisseur", nom: "Épaisseur (cm)", options: EPAISSEURS, defaut: "20" },
+];
+
+// Épaisseurs (cm) qu'une usine ne sait pas produire. Une usine absente de ce
+// tableau fabrique toute la gamme. À compléter au fur et à mesure.
+const EPAISSEURS_HORS_GAMME = {
+  "Usine 1": ["16"],
+};
+
+const choisis = {};
+selections.forEach(s => { choisis[s.cle] = s.defaut; });
+
+// Options à barrer sur une ligne, compte tenu des choix déjà faits.
+function horsGamme(cleLigne) {
+  if (cleLigne !== "epaisseur") return [];
+  return EPAISSEURS_HORS_GAMME[choisis.usine] ?? [];
+}
+
 const $ = id => document.getElementById(id);
 const echappe = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const remplir = (sel, cles) => {
   sel.innerHTML = cles.map(k => `<option value="${echappe(k)}">${echappe(k)}</option>`).join("");
 };
 
-remplir($("classe1"), Object.keys(enrobageData));
-remplir($("classe2"), Object.keys(enrobageData));
+remplir($("classe1"), CLASSES_EXPOSITION);
+remplir($("classe2"), CLASSES_EXPOSITION);
 remplir($("treillis1"), Object.keys(treillisData));
 remplir($("treillis2"), Object.keys(treillisData));
 $("classe1").value = "XC4";
@@ -367,8 +460,66 @@ function blocParoi(n, section, nom, treillis, type, classe, enrobage) {
     </div>`;
 }
 
+function rendreChoix() {
+  // Changer d'usine peut retirer de la gamme l'épaisseur déjà choisie : on la
+  // relâche, sinon le calcul tournerait sur une épaisseur que l'usine ne fait pas.
+  selections.forEach(({ cle }) => {
+    if (horsGamme(cle).includes(choisis[cle])) choisis[cle] = null;
+  });
+
+  $("choix").innerHTML = selections.map(({ cle, nom, options }) => {
+    const barrees = horsGamme(cle);
+    const note = barrees.length
+      ? `<span class="hors-gamme">${echappe(choisis.usine)} ne produit pas : ${barrees.join(", ")} cm</span>`
+      : "";
+
+    return `<div class="choix-ligne">
+      <span class="nom">${echappe(nom)}</span>
+      <div class="cases">${options.map((option, i) => `
+        <button type="button" class="case-choix" data-reglage="${cle}" data-indice="${i}"
+                aria-pressed="${choisis[cle] === option}"
+                ${barrees.includes(option) ? "disabled" : ""}>${echappe(option)}</button>`).join("")}
+      </div>${note}
+    </div>`;
+  }).join("");
+
+  const resume = selections.map(({ cle, nom }) => `${nom} : ${choisis[cle] ?? "—"}`).join("  ·  ");
+  document.querySelectorAll("[data-rappel]").forEach(n => { n.textContent = resume; });
+}
+
+document.addEventListener("click", e => {
+  const bouton = e.target.closest("[data-reglage]");
+  if (!bouton || bouton.disabled) return;
+  const reglage = selections.find(s => s.cle === bouton.dataset.reglage);
+  const option = reglage.options[Number(bouton.dataset.indice)];
+  // Recliquer sur la case déjà choisie l'annule : pas d'impasse.
+  choisis[reglage.cle] = choisis[reglage.cle] === option ? null : option;
+  rendreChoix();
+  rendre();
+});
+
+function enAttente(message) {
+  const bloc = `<div class="attente">${echappe(message)}</div>`;
+  $("normal").innerHTML = bloc;
+  $("retourne").innerHTML = bloc;
+}
+
 function rendre() {
-  const epTotale = (parseInt($("ep").value, 10) || 0) * 10;
+  // L'enrobage dépend de l'usine : sans usine choisie, on ne sait pas quelle
+  // table appliquer, donc on ne calcule rien plutôt que de deviner.
+  if (choisis.usine == null) {
+    return enAttente("Choisissez une usine : les enrobages minimaux lui sont propres.");
+  }
+  if (!(choisis.usine in ENROBAGES_PAR_USINE)) {
+    return enAttente(`Les enrobages de ${choisis.usine} ne sont pas encore renseignés.`
+      + " Seule l'Usine 1 est programmée pour l'instant.");
+  }
+  if (choisis.epaisseur == null) {
+    return enAttente("Choisissez une épaisseur de prémur pour lancer le calcul.");
+  }
+
+  const enrobageData = ENROBAGES_PAR_USINE[choisis.usine];
+  const epTotale = parseInt(choisis.epaisseur, 10) * 10;
   const classe1 = $("classe1").value, classe2 = $("classe2").value;
   const t1 = $("treillis1").value, t2 = $("treillis2").value;
   const base1 = enrobageData[classe1], base2 = enrobageData[classe2];
@@ -421,9 +572,7 @@ document.addEventListener("input", e => {
       overrides[cle(t.dataset.section, t.dataset.scenario, t.dataset.paroi)] = val;
       rendre();
     }
-    return;
   }
-  if (t === $("ep")) rendre();
 });
 
 // Changer une classe ou un treillis remet les enrobages à la valeur normative.
@@ -431,6 +580,7 @@ document.addEventListener("input", e => {
   $(id).addEventListener("change", () => { overrides = {}; rendre(); });
 });
 
+rendreChoix();
 rendre();
 
 // Mise en cache pour l'usage hors connexion. Sans effet en ouverture directe du fichier.
